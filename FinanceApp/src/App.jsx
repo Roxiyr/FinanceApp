@@ -1,30 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import './App.css';
 import { TransactionProvider } from './context/TransactionContext';
+import { AuthProvider, AuthContext } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import Dashboard from './Page/Dashboard/Dashboard';
 import Pendapatan from './Page/Pendapatan/Pendapatan';
 import Pengeluaran from './Page/Pengeluaran/Pengeluaran';
 import Laporan from './Page/Laporan/Laporan';
 import Anggaran from './Page/Anggaran/Anggaran';
+import LoginPage from './Page/Login/LoginPage';
 
-export default function App() {
-  // ambil initial page dari hash (jika ada) supaya tampilan sesuai "tampilan awalnya"
+function AppContent() {
+  const { user, logout } = useContext(AuthContext);
   const initialPage = (typeof window !== 'undefined' && window.location.hash) 
     ? window.location.hash.replace('#','') 
     : 'dashboard';
 
   const [currentPage, setCurrentPage] = useState(initialPage);
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
 
-  // ketika currentPage berubah, update URL hash
   useEffect(() => {
     if (typeof window !== 'undefined') {
       window.location.hash = currentPage;
     }
   }, [currentPage]);
 
-  // listen perubahan hash dari luar (back/forward atau link)
   useEffect(() => {
     function onHashChange() {
       const page = window.location.hash.replace('#','') || 'dashboard';
@@ -41,11 +40,18 @@ export default function App() {
   }
 
   function handleLogout() {
-    setIsLoggedIn(false);
+    console.log('Logout clicked');
+    logout();
     setCurrentPage('dashboard');
   }
 
   function renderPage() {
+    // Jika belum login, tampil login page
+    if (!user) {
+      return <LoginPage />;
+    }
+
+    // Jika sudah login, tampil halaman sesuai currentPage
     switch (currentPage) {
       case 'dashboard': return <Dashboard />;
       case 'pendapatan': return <Pendapatan />;
@@ -57,9 +63,26 @@ export default function App() {
   }
 
   return (
-    <TransactionProvider>
-      <Navbar currentPage={currentPage} onNavigate={handleNavigate} isLoggedIn={isLoggedIn} onLogout={handleLogout} />
+    <>
+      {user && (
+        <Navbar 
+          currentPage={currentPage}
+          onNavigate={handleNavigate}
+          isLoggedIn={!!user}
+          onLogout={handleLogout}
+        />
+      )}
       {renderPage()}
-    </TransactionProvider>
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <TransactionProvider>
+        <AppContent />
+      </TransactionProvider>
+    </AuthProvider>
   );
 }
