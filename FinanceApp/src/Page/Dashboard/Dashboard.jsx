@@ -1,7 +1,8 @@
 import { useContext, useState } from "react";
 import { TransactionContext } from "../../context/TransactionContext";
 import { calcTotals } from "../../logic/transactionsLogic";
-import { TrendingUp, TrendingDown, Target, X } from 'lucide-react';
+import { formatRp } from "../../logic/format";
+import { TrendingUp, TrendingDown, Target, X, Plus } from 'lucide-react';
 import './Dashboard.css';
 
 const INCOME_CATEGORIES = ['Gaji', 'Freelance', 'Bonus', 'Investasi', 'Lainnya'];
@@ -9,37 +10,59 @@ const EXPENSE_CATEGORIES = ['Makan', 'Transportasi', 'Hiburan', 'Kesehatan', 'Be
 const COLORS = ['#3b82f6', '#ec4899', '#a855f7', '#22c55e', '#f59e0b', '#ef4444'];
 
 function Dashboard() {
-  const { transactions, addTransaction } = useContext(TransactionContext);
+  const { transactions, addTransaction, budgets } = useContext(TransactionContext);
   const { income, expense, balance } = calcTotals(transactions);
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState(null);
-  const [formData, setFormData] = useState({ category: '', amount: '', date: new Date().toISOString().split('T')[0] });
+  const [isCustomCategory, setIsCustomCategory] = useState(false);
+  const [formData, setFormData] = useState({ 
+    name: '',
+    category: '', 
+    customCategory: '',
+    amount: '', 
+    date: new Date().toISOString().split('T')[0],
+    notes: ''
+  });
 
   function openModal(type) {
     setModalType(type);
     setShowModal(true);
+    setIsCustomCategory(false);
     const categories = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
-    setFormData({ category: categories[0], amount: '', date: new Date().toISOString().split('T')[0] });
+    setFormData({ 
+      name: '',
+      category: categories[0], 
+      customCategory: '',
+      amount: '', 
+      date: new Date().toISOString().split('T')[0],
+      notes: ''
+    });
   }
 
   function closeModal() {
     setShowModal(false);
     setModalType(null);
+    setIsCustomCategory(false);
   }
 
   function handleSubmit(e) {
     e.preventDefault();
-    if (!formData.category || !formData.amount) {
-      alert('Isi semua field');
+    
+    const finalCategory = isCustomCategory ? formData.customCategory : formData.category;
+    
+    if (!formData.name || !finalCategory || !formData.amount) {
+      alert('Isi semua field (Nama, Kategori, Jumlah)');
       return;
     }
 
     const newTx = {
       id: crypto.randomUUID(),
       type: modalType,
-      category: formData.category,
+      name: formData.name,
+      category: finalCategory,
       amount: parseFloat(formData.amount),
       date: formData.date,
+      notes: formData.notes
     };
     addTransaction(newTx);
     closeModal();
@@ -50,43 +73,44 @@ function Dashboard() {
     setFormData(prev => ({ ...prev, [name]: value }));
   }
 
+  function handleCategoryChange(e) {
+    const value = e.target.value;
+    if (value === 'custom') {
+      setIsCustomCategory(true);
+      setFormData(prev => ({ ...prev, category: '', customCategory: '' }));
+    } else {
+      setIsCustomCategory(false);
+      setFormData(prev => ({ ...prev, category: value, customCategory: '' }));
+    }
+  }
+
   const categories = modalType === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+  const placeholderName = modalType === 'income' ? 'Contoh: Gaji Bulanan' : 'Contoh: Belanja Bulanan';
 
   return (
     <div className="app-container">
-      <header className="navbar">
-        <div className="navbar-content">
-          <div className="logo-container">
-            <div className="logo-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="10" fill="#fff" />
-                <path d="M6 12h12" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
-            </div>
-            <div className="logo-text">FinanceApp</div>
-          </div>
-
-          <nav className="nav-menu" aria-label="Main navigation">
-            <button className="nav-item nav-item-active">Dashboard</button>
-            <button className="nav-item">Pendapatan</button>
-            <button className="nav-item">Pengeluaran</button>
-            <button className="nav-item">Anggaran</button>
-            <button className="nav-item">Laporan</button>
-            <button className="nav-item">Pengaturan</button>
-            <button className="nav-item nav-item-danger">Keluar</button>
-          </nav>
-
-          <div className="action-buttons">
-            <button className="btn btn-success" onClick={() => openModal('income')}>+ Pendapatan</button>
-            <button className="btn btn-danger" onClick={() => openModal('expense')}>+ Pengeluaran</button>
-          </div>
-        </div>
-      </header>
-
       <main className="main-content">
         <header className="page-header">
-          <h1 className="page-title">Dashboard</h1>
-          <p className="page-subtitle">Ringkasan keuangan Anda</p>
+          <div>
+            <h1 className="page-title">Dashboard</h1>
+            <p className="page-subtitle">Ringkasan keuangan Anda</p>
+          </div>
+          <div className="page-header-actions">
+            <button 
+              className="btn btn-success"
+              onClick={() => openModal('income')}
+            >
+              <Plus width={18} height={18} />
+              Pendapatan
+            </button>
+            <button 
+              className="btn btn-danger"
+              onClick={() => openModal('expense')}
+            >
+              <Plus width={18} height={18} />
+              Pengeluaran
+            </button>
+          </div>
         </header>
 
         {transactions.length === 0 ? (
@@ -109,14 +133,22 @@ function Dashboard() {
             </p>
 
             <div className="empty-actions">
-              <button className="btn btn-success btn-lg" onClick={() => openModal('income')}>+ Tambah Pendapatan</button>
-              <button className="btn btn-danger btn-lg" onClick={() => openModal('expense')}>+ Tambah Pengeluaran</button>
+              <button className="btn btn-success btn-lg" onClick={() => openModal('income')}>
+                <Plus width={20} height={20} /> Tambah Pendapatan
+              </button>
+              <button className="btn btn-danger btn-lg" onClick={() => openModal('expense')}>
+                <Plus width={20} height={20} /> Tambah Pengeluaran
+              </button>
             </div>
-
-            <a className="link-button">Atau lihat contoh data</a>
           </section>
         ) : (
-          <DashboardContent transactions={transactions} income={income} expense={expense} balance={balance} />
+          <DashboardContent
+            transactions={transactions}
+            income={income}
+            expense={expense}
+            balance={balance}
+            budgets={budgets}
+          />
         )}
       </main>
 
@@ -124,51 +156,100 @@ function Dashboard() {
       {showModal && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2 className="modal-title">
+            <div className="modal-header" style={{
+              background: modalType === 'income' ? '#22c55e' : '#ef4444',
+              color: '#fff',
+              borderRadius: '12px 12px 0 0'
+            }}>
+              <h2 className="modal-title" style={{ color: '#fff' }}>
                 {modalType === 'income' ? 'Tambah Pendapatan' : 'Tambah Pengeluaran'}
               </h2>
-              <button className="modal-close" onClick={closeModal}>
+              <button className="modal-close" onClick={closeModal} style={{ color: '#fff' }}>
                 <X width={20} height={20} />
               </button>
             </div>
 
             <form className="modal-form" onSubmit={handleSubmit}>
               <div className="form-group">
-                <label className="form-label">Kategori</label>
-                <select
-                  name="category"
-                  value={formData.category}
-                  onChange={handleInputChange}
-                  className="form-input"
-                >
-                  {categories.map((cat) => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Jumlah (Rp)</label>
+                <label className="form-label">Nama Transaksi <span style={{ color: '#ef4444' }}>*</span></label>
                 <input
-                  type="number"
-                  name="amount"
-                  placeholder="0"
-                  value={formData.amount}
+                  type="text"
+                  name="name"
+                  placeholder={placeholderName}
+                  value={formData.name}
                   onChange={handleInputChange}
                   className="form-input"
-                  min="1"
                 />
               </div>
 
               <div className="form-group">
-                <label className="form-label">Tanggal</label>
+                <label className="form-label">Jumlah (Rp) <span style={{ color: '#ef4444' }}>*</span></label>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <span style={{ marginRight: '8px', color: '#6b7280' }}>Rp</span>
+                  <input
+                    type="number"
+                    name="amount"
+                    placeholder="0"
+                    value={formData.amount}
+                    onChange={handleInputChange}
+                    className="form-input"
+                    min="1"
+                    style={{ flex: 1 }}
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Kategori <span style={{ color: '#ef4444' }}>*</span></label>
+                <select
+                  name="category"
+                  value={isCustomCategory ? 'custom' : formData.category}
+                  onChange={handleCategoryChange}
+                  className="form-input"
+                >
+                  <option value="">Pilih Kategori</option>
+                  {categories.map((cat) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                  <option value="custom">+ Kategori Baru</option>
+                </select>
+              </div>
+
+              {isCustomCategory && (
+                <div className="form-group">
+                  <label className="form-label">Nama Kategori Baru <span style={{ color: '#ef4444' }}>*</span></label>
+                  <input
+                    type="text"
+                    name="customCategory"
+                    placeholder="Masukkan nama kategori"
+                    value={formData.customCategory}
+                    onChange={handleInputChange}
+                    className="form-input"
+                  />
+                </div>
+              )}
+
+              <div className="form-group">
+                <label className="form-label">Tanggal <span style={{ color: '#ef4444' }}>*</span></label>
                 <input
                   type="date"
                   name="date"
                   value={formData.date}
                   onChange={handleInputChange}
                   className="form-input"
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Catatan (Opsional)</label>
+                <textarea
+                  name="notes"
+                  placeholder="Tambahkan catatan untuk transaksi ini..."
+                  value={formData.notes}
+                  onChange={handleInputChange}
+                  className="form-input"
+                  rows="3"
+                  style={{ resize: 'vertical' }}
                 />
               </div>
 
@@ -186,10 +267,9 @@ function Dashboard() {
   );
 }
 
-function DashboardContent({ transactions, income, expense, balance }) {
-  const formatRp = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
+function DashboardContent({ transactions, income, expense, balance, budgets }) {
+  const totalBudgets = (budgets || []).reduce((s, b) => s + (b.amount || 0), 0);
 
-  // Hitung pengeluaran per kategori
   function getExpenseByCategory() {
     const categoryTotals = {};
     transactions
@@ -200,7 +280,6 @@ function DashboardContent({ transactions, income, expense, balance }) {
     return categoryTotals;
   }
 
-  // Generate SVG donut chart - FULL LINGKARAN dengan segment berdasarkan persentase
   function generateDonutChart() {
     const categoryTotals = getExpenseByCategory();
     const entries = Object.entries(categoryTotals);
@@ -217,7 +296,6 @@ function DashboardContent({ transactions, income, expense, balance }) {
     
     let cumulativePercentage = 0;
     
-    // Buat lingkaran FULL dengan segment warna per kategori
     const circles = entries.map(([category, amount], index) => {
       const percentage = (amount / total) * 100;
       const strokeDasharray = (percentage / 100) * circumference;
@@ -246,7 +324,6 @@ function DashboardContent({ transactions, income, expense, balance }) {
     return circles;
   }
 
-  // Tampilkan hanya 6 transaksi terbaru
   const recentTransactions = transactions.slice(-6);
   const expenseByCategory = getExpenseByCategory();
   const categoryKeys = Object.keys(expenseByCategory);
@@ -254,7 +331,6 @@ function DashboardContent({ transactions, income, expense, balance }) {
 
   return (
     <div className="dashboard-content">
-      {/* Stats Cards */}
       <div className="stats-grid">
         <div className="stat-card">
           <div className="stat-header">
@@ -279,9 +355,15 @@ function DashboardContent({ transactions, income, expense, balance }) {
           </div>
           <div className="stat-value">{formatRp(balance)}</div>
         </div>
+
+        <div className="stat-card">
+          <div className="stat-header">
+            <span className="stat-label">Total Anggaran</span>
+          </div>
+          <div className="stat-value">{formatRp(totalBudgets)}</div>
+        </div>
       </div>
 
-      {/* Chart & Transactions */}
       <div className="dashboard-grid">
         <div className="card">
           <h3 className="card-title">Pengeluaran per Kategori</h3>
@@ -323,8 +405,8 @@ function DashboardContent({ transactions, income, expense, balance }) {
                   {tx.type === 'income' ? <TrendingUp width={16} height={16} /> : <TrendingDown width={16} height={16} />}
                 </div>
                 <div className="transaction-info">
-                  <div className="transaction-description">{tx.category}</div>
-                  <div className="transaction-date">{tx.date}</div>
+                  <div className="transaction-description">{tx.name || tx.category}</div>
+                  <div className="transaction-date">{tx.date} • {tx.category}</div>
                 </div>
                 <div className={`transaction-amount ${tx.type === 'income' ? 'transaction-amount-success' : 'transaction-amount-danger'}`}>
                   {tx.type === 'income' ? '+' : '-'}{formatRp(tx.amount)}
