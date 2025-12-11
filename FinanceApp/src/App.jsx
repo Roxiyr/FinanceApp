@@ -9,6 +9,7 @@ import Pengeluaran from './Page/Pengeluaran/Pengeluaran';
 import Laporan from './Page/Laporan/Laporan';
 import Anggaran from './Page/Anggaran/Anggaran';
 import LoginPage from './Page/Login/LoginPage';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 
 function AppContent() {
   const { user, logout } = useContext(AuthContext);
@@ -81,7 +82,12 @@ export default function App() {
   return (
     <AuthProvider>
       <TransactionProvider>
-        <AppContent />
+        <Router>
+          <Routes>
+            <Route path="/" element={<LoginPage />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+          </Routes>
+        </Router>
       </TransactionProvider>
     </AuthProvider>
   );

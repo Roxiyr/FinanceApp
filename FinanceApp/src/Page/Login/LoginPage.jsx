@@ -1,6 +1,7 @@
 import { useContext, useState } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 import { Mail, Lock, LogIn } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import './LoginPage.css';
 
 export default function LoginPage() {
@@ -8,6 +9,7 @@ export default function LoginPage() {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   function handleChange(e) {
     const { name, value } = e.target;
@@ -15,18 +17,38 @@ export default function LoginPage() {
     setError('');
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     setLoading(true);
 
     try {
-      login(formData.email, formData.password);
-      setFormData({ email: '', password: '' });
+      const response = await fetch('http://localhost:5000/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message);
+
+      console.log('Login successful:', data.token);
+
+      // Simpan token di localStorage
+      localStorage.setItem('token', data.token);
+
+      // Redirect ke halaman Dashboard
+      navigate('/dashboard');
     } catch (err) {
+      console.error('Login error:', err.message);
       setError(err.message);
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleLogin() {
+    console.log('Navigating to dashboard...');
+    navigate('/dashboard');
   }
 
   return (
