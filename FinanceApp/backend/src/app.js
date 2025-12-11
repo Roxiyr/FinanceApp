@@ -15,7 +15,7 @@ app.use((req, res, next) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         sessionId: 'debug-session',
-        runId: 'run2',
+        runId: 'run3',
         hypothesisId: 'H6',
         location: 'app.js:middleware:login',
         message: 'Incoming login request',

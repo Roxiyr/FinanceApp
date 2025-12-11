@@ -1,7 +1,8 @@
-import { useContext, useState } from "react";
+import { useContext, useState, useMemo } from "react";
 import { TransactionContext } from "../../context/TransactionContext";
 import { calcTotals } from "../../logic/transactionsLogic";
 import { formatRp } from "../../logic/format";
+import { attachSpentToBudgets, summarizeBudgets, getBudgetStatus, sortBudgetsByRemaining } from "../../logic/budgetLogic";
 import { TrendingUp, TrendingDown, Target, X, Plus } from 'lucide-react';
 import './Dashboard.css';
 
@@ -268,7 +269,19 @@ function Dashboard() {
 }
 
 function DashboardContent({ transactions, income, expense, balance, budgets }) {
-  const totalBudgets = (budgets || []).reduce((s, b) => s + (b.amount || 0), 0);
+  const budgetsWithSpent = useMemo(() => {
+    const mappedBudgets = (budgets || []).map((b) => ({ ...b, id: b.id ?? b.category }));
+    const expenseTx = transactions
+      .filter((t) => t.type === 'expense')
+      .map((t) => ({ budgetId: t.category, amount: t.amount, type: t.type }));
+    return sortBudgetsByRemaining(attachSpentToBudgets(mappedBudgets, expenseTx));
+  }, [budgets, transactions]);
+
+  const budgetsTotals = useMemo(() => {
+    const summary = summarizeBudgets(budgetsWithSpent);
+    const spent = budgetsWithSpent.reduce((s, b) => s + (b.spent || 0), 0);
+    return { total: summary.total, spent, remaining: summary.total - spent };
+  }, [budgetsWithSpent]);
 
   const chartTransactions = transactions;
   const totalChartAmount = chartTransactions.reduce((s, t) => s + Math.abs(t.amount || 0), 0);
@@ -343,7 +356,8 @@ function DashboardContent({ transactions, income, expense, balance, budgets }) {
           <div className="stat-header">
             <span className="stat-label">Total Anggaran</span>
           </div>
-          <div className="stat-value">{formatRp(totalBudgets)}</div>
+          <div className="stat-value">{formatRp(budgetsTotals.total)}</div>
+          <div className="stat-subtext">Terpakai: {formatRp(budgetsTotals.spent)} • Sisa: {formatRp(budgetsTotals.remaining)}</div>
         </div>
       </div>
 
@@ -379,6 +393,38 @@ function DashboardContent({ transactions, income, expense, balance, budgets }) {
               );
             })}
           </div>
+        </div>
+
+        <div className="card">
+          <div className="transactions-header">
+            <h3 className="card-title">Status Anggaran</h3>
+            <a href="#" className="link-primary">Kelola Anggaran</a>
+          </div>
+          {budgetsWithSpent.length === 0 ? (
+            <div className="empty-state small">Belum ada anggaran</div>
+          ) : (
+            <div className="budget-status-list">
+              {budgetsWithSpent.slice(0, 4).map((b) => {
+                const status = getBudgetStatus(b.amount || 0, b.spent || 0);
+                const pct = b.amount ? Math.min(100, Math.round((b.spent / b.amount) * 100)) : 0;
+                const badgeClass = status.status === 'over' ? 'badge-over' : status.status === 'warn' ? 'badge-warn' : 'badge-safe';
+                return (
+                  <div key={b.id} className="budget-status-item">
+                    <div>
+                      <div className="budget-status-title">{b.category || b.name}</div>
+                      <div className="budget-status-meta">{formatRp(b.spent)} / {formatRp(b.amount || 0)}</div>
+                    </div>
+                    <div className="budget-status-right">
+                      <span className={`budget-badge ${badgeClass}`}>{status.status === 'over' ? 'Over' : status.status === 'warn' ? 'Hampir' : 'Aman'}</span>
+                      <div className="budget-progress mini">
+                        <div className="budget-progress-fill" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="card">
