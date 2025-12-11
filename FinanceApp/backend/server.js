@@ -1,7 +1,7 @@
 require('dotenv').config();
 const app = require('./src/app');
 
-const port = process.env.PORT || 4000;
+const port = process.env.PORT || 4001;
 
 app.listen(port, () => {
   console.log('\n🚀 [SERVER] Backend berjalan di http://localhost:' + port);
@@ -16,7 +16,7 @@ app.listen(port, () => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       sessionId: 'debug-session',
-      runId: 'run2',
+      runId: 'run3',
       hypothesisId: 'H5',
       location: 'server.js:listen',
       message: 'Backend server started',

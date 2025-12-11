@@ -1,13 +1,20 @@
-import { useContext } from 'react';
+import { useContext, useMemo } from 'react';
 import { TransactionContext } from '../../context/TransactionContext';
 import { calcTotals } from '../../logic/transactionsLogic';
 import { formatRp, calculatePercent, formatPercent } from '../../logic/format';
+import { summarizeBudgets } from '../../logic/budgetLogic';
 import { BarChart3, TrendingUp, TrendingDown, Target } from 'lucide-react';
 import './Laporan.css';
 
 export default function Laporan() {
-  const { transactions } = useContext(TransactionContext);
+  const { transactions, budgets } = useContext(TransactionContext);
   const { income, expense, balance } = calcTotals(transactions);
+
+  const budgetSummary = useMemo(() => {
+    const { total, count } = summarizeBudgets(budgets);
+    const spent = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + (t.amount || 0), 0);
+    return { total, spent, remaining: total - spent, count };
+  }, [budgets, transactions]);
 
   function getExpenseByCategory() {
     const categoryTotals = {};
@@ -59,6 +66,19 @@ export default function Laporan() {
             <div className="summary-label">Saldo Bersih</div>
             <div className={`summary-value ${balance >= 0 ? 'balance-positive' : 'balance-negative'}`}>
               {formatRp(balance)}
+            </div>
+          </div>
+        </div>
+
+        <div className="summary-card budget-card">
+          <div className="summary-icon">
+            <BarChart3 width={24} height={24} />
+          </div>
+          <div className="summary-content">
+            <div className="summary-label">Total Anggaran ({budgetSummary.count})</div>
+            <div className="summary-value">{formatRp(budgetSummary.total)}</div>
+            <div className="summary-subtext">
+              Terpakai: {formatRp(budgetSummary.spent)} • Sisa: {formatRp(budgetSummary.remaining)}
             </div>
           </div>
         </div>

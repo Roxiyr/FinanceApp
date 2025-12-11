@@ -249,3 +249,21 @@ body {
     justify-content: center;
   }
 }
+
+/* Health banner */
+.health-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fef3c7;
+  color: #92400e;
+  padding: 10px 16px;
+  border-bottom: 1px solid #f59e0b;
+}
+.health-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #f59e0b;
+  display: inline-block;
+}

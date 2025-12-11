@@ -17,7 +17,7 @@ class AuthController {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId: 'debug-session',
-          runId: 'run1',
+          runId: 'run3',
           hypothesisId: 'H1',
           location: 'authController.js:login:entry',
           message: 'Login request received',
@@ -46,7 +46,7 @@ class AuthController {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId: 'debug-session',
-          runId: 'run1',
+          runId: 'run3',
           hypothesisId: 'H2',
           location: 'authController.js:login:afterFind',
           message: 'User lookup result',
@@ -68,6 +68,21 @@ class AuthController {
         
         const isValidPassword = await bcrypt.compare(password, user.password);
         if (!isValidPassword) {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/0184059c-dd5d-4018-a26c-8ffaf95c6525', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sessionId: 'debug-session',
+              runId: 'run3',
+              hypothesisId: 'H7',
+              location: 'authController.js:login:invalidPassword',
+              message: 'Password mismatch',
+              data: { email },
+              timestamp: Date.now()
+            })
+          }).catch(() => {});
+          // #endregion
           return res.status(401).json({ error: 'Email atau password salah' });
         }
       } else {
@@ -81,12 +96,44 @@ class AuthController {
         const passwordHash = await bcrypt.hash(password, 10);
         const userId = await User.create(email, email.split('@')[0], passwordHash);
         
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/0184059c-dd5d-4018-a26c-8ffaf95c6525', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: 'debug-session',
+            runId: 'run3',
+            hypothesisId: 'H8',
+            location: 'authController.js:login:autoCreate',
+            message: 'User auto-created in dev mode',
+            data: { email, userId },
+            timestamp: Date.now()
+          })
+        }).catch(() => {});
+        // #endregion
+
         const newUser = await User.findById(userId);
         const token = jwt.sign(
           { id: newUser.id, email: newUser.email },
           jwtSecret,
           { expiresIn: '7d' }
         );
+
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/0184059c-dd5d-4018-a26c-8ffaf95c6525', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: 'debug-session',
+            runId: 'run3',
+            hypothesisId: 'H9',
+            location: 'authController.js:login:autoCreateSuccess',
+            message: 'Login success via auto-create',
+            data: { email, userId },
+            timestamp: Date.now()
+          })
+        }).catch(() => {});
+        // #endregion
 
         return res.json({ 
           status: 'ok', 
@@ -102,6 +149,22 @@ class AuthController {
         { expiresIn: '7d' }
       );
 
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/0184059c-dd5d-4018-a26c-8ffaf95c6525', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: 'debug-session',
+          runId: 'run3',
+          hypothesisId: 'H9',
+          location: 'authController.js:login:success',
+          message: 'Login success existing user',
+          data: { email, userId: user.id },
+          timestamp: Date.now()
+        })
+      }).catch(() => {});
+      // #endregion
+
       res.json({ 
         status: 'ok', 
         user: { id: user.id, email: user.email, name: user.name },
@@ -116,7 +179,7 @@ class AuthController {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId: 'debug-session',
-          runId: 'run1',
+          runId: 'run3',
           hypothesisId: 'H3',
           location: 'authController.js:login:error',
           message: 'Login error caught',

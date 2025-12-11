@@ -23,7 +23,7 @@ export default function LoginPage() {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:4000/api/auth/login', {
+      const response = await fetch('http://localhost:4001/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -55,7 +55,7 @@ export default function LoginPage() {
           data: {
             errorMessage: err?.message || null,
             url: window.location?.href || null,
-            backendUrl: 'http://localhost:4000/api/auth/login'
+            backendUrl: 'http://localhost:4001/api/auth/login'
           },
           timestamp: Date.now()
         })
