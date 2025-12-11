@@ -1,13 +1,12 @@
-import { useState } from 'react';
+import { useState, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '../context/AuthContext';
 import { Menu, X, LogOut, BarChart3, TrendingUp, TrendingDown, Home } from 'lucide-react';
 import './Navbar.css';
 
-export default function Navbar({ 
-  currentPage = 'dashboard', 
-  onNavigate = () => {}, 
-  isLoggedIn = true, 
-  onLogout = () => {} 
-}) {
+export default function Navbar({ currentPage = 'dashboard' }) {
+  const navigate = useNavigate();
+  const { logout, isAuthenticated } = useContext(AuthContext);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const menuItems = [
@@ -18,14 +17,26 @@ export default function Navbar({
   ];
 
   function handleNavClick(pageId) {
-    console.log('Navigating to:', pageId);
-    onNavigate(pageId);
+    const routeMap = {
+      dashboard: '/',
+      pendapatan: '/pendapatan',
+      pengeluaran: '/pengeluaran',
+      laporan: '/laporan',
+      login: '/login'
+    };
+
+    const target = routeMap[pageId] || '/';
+    navigate(target);
     setMobileMenuOpen(false);
   }
 
-  function handleLogout() {
-    console.log('Logout clicked');
-    onLogout();
+  async function handleLogout() {
+    try {
+      await logout();
+      navigate('/login', { replace: true });
+    } catch (e) {
+      console.error('Logout error:', e);
+    }
     setMobileMenuOpen(false);
   }
 
@@ -64,7 +75,7 @@ export default function Navbar({
 
         {/* Action Buttons */}
         <div className="nav-actions">
-          {isLoggedIn && (
+          {isAuthenticated() && (
             <button 
               onClick={handleLogout}
               className="btn btn-logout"
@@ -75,7 +86,7 @@ export default function Navbar({
               <span>Keluar</span>
             </button>
           )}
-          {!isLoggedIn && (
+          {!isAuthenticated() && (
             <button 
               onClick={() => handleNavClick('login')}
               className="btn btn-login"
@@ -123,7 +134,7 @@ export default function Navbar({
           </nav>
           
           <div className="mobile-actions">
-            {isLoggedIn && (
+            {isAuthenticated() && (
               <button 
                 onClick={handleLogout}
                 className="btn btn-logout btn-block"

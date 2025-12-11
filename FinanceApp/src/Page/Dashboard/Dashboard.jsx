@@ -270,43 +270,31 @@ function Dashboard() {
 function DashboardContent({ transactions, income, expense, balance, budgets }) {
   const totalBudgets = (budgets || []).reduce((s, b) => s + (b.amount || 0), 0);
 
-  function getExpenseByCategory() {
-    const categoryTotals = {};
-    transactions
-      .filter((t) => t.type === 'expense')
-      .forEach((t) => {
-        categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
-      });
-    return categoryTotals;
-  }
+  const chartTransactions = transactions;
+  const totalChartAmount = chartTransactions.reduce((s, t) => s + Math.abs(t.amount || 0), 0);
 
   function generateDonutChart() {
-    const categoryTotals = getExpenseByCategory();
-    const entries = Object.entries(categoryTotals);
-    
-    if (entries.length === 0) {
+    if (!chartTransactions.length || totalChartAmount === 0) {
       return (
         <circle cx="100" cy="100" r="65" fill="none" stroke="#e5e7eb" strokeWidth="30" />
       );
     }
 
-    const total = entries.reduce((sum, [_, amount]) => sum + amount, 0);
     const radius = 65;
     const circumference = 2 * Math.PI * radius;
-    
     let cumulativePercentage = 0;
-    
-    const circles = entries.map(([category, amount], index) => {
-      const percentage = (amount / total) * 100;
+
+    return chartTransactions.map((tx, index) => {
+      const amount = Math.abs(tx.amount || 0);
+      const percentage = totalChartAmount === 0 ? 0 : (amount / totalChartAmount) * 100;
       const strokeDasharray = (percentage / 100) * circumference;
       const strokeDashoffset = -(cumulativePercentage / 100) * circumference;
-      
       cumulativePercentage += percentage;
       const color = COLORS[index % COLORS.length];
-      
+
       return (
         <circle
-          key={category}
+          key={tx.id}
           cx="100"
           cy="100"
           r={radius}
@@ -320,14 +308,9 @@ function DashboardContent({ transactions, income, expense, balance, budgets }) {
         />
       );
     });
-    
-    return circles;
   }
 
   const recentTransactions = transactions.slice(-6);
-  const expenseByCategory = getExpenseByCategory();
-  const categoryKeys = Object.keys(expenseByCategory);
-  const totalExpense = Object.values(expenseByCategory).reduce((a, b) => a + b, 0);
 
   return (
     <div className="dashboard-content">
@@ -366,24 +349,29 @@ function DashboardContent({ transactions, income, expense, balance, budgets }) {
 
       <div className="dashboard-grid">
         <div className="card">
-          <h3 className="card-title">Pengeluaran per Kategori</h3>
+          <h3 className="card-title">Distribusi Transaksi</h3>
           <div className="chart-placeholder">
             <svg viewBox="0 0 200 200" width="220" height="220" className="donut-chart">
               {generateDonutChart()}
             </svg>
           </div>
           <div className="chart-stats">
-            <div className="total-expense">Total: <strong>{formatRp(totalExpense)}</strong></div>
+            <div className="total-expense">Total: <strong>{formatRp(totalChartAmount)}</strong></div>
           </div>
           <div className="chart-legend">
-            {categoryKeys.map((category, idx) => {
-              const amount = expenseByCategory[category];
-              const percentage = ((amount / totalExpense) * 100).toFixed(1);
+            {chartTransactions.length === 0 && (
+              <div className="legend-item">
+                <span className="legend-label" style={{ color: '#6b7280' }}>Belum ada transaksi</span>
+              </div>
+            )}
+            {chartTransactions.map((tx, idx) => {
+              const amount = Math.abs(tx.amount || 0);
+              const percentage = totalChartAmount === 0 ? 0 : ((amount / totalChartAmount) * 100).toFixed(1);
               return (
-                <div key={category} className="legend-item">
+                <div key={tx.id} className="legend-item">
                   <span className="legend-color" style={{ backgroundColor: COLORS[idx % COLORS.length] }}></span>
                   <div className="legend-info">
-                    <span className="legend-label">{category}</span>
+                    <span className="legend-label">{tx.name || tx.category || 'Transaksi'}</span>
                     <span className="legend-percentage">{percentage}%</span>
                   </div>
                   <span className="legend-value">{formatRp(amount)}</span>
