@@ -8,7 +8,10 @@ import './Dashboard.css';
 
 const INCOME_CATEGORIES = ['Gaji', 'Freelance', 'Bonus', 'Investasi', 'Lainnya'];
 const EXPENSE_CATEGORIES = ['Makan', 'Transportasi', 'Hiburan', 'Kesehatan', 'Belanja', 'Utilitas', 'Lainnya'];
-const COLORS = ['#3b82f6', '#ec4899', '#a855f7', '#22c55e', '#f59e0b', '#ef4444'];
+
+// Warna untuk Donut Chart
+const CHART_COLORS = ['#3b82f6', '#ec4899', '#a855f7', '#f59e0b', '#06b6d4', '#10b981', '#6b7280']; 
+const CHART_RADIUS = 65; // Radius untuk perhitungan SVG
 
 function Dashboard() {
   const { transactions, addTransaction, budgets } = useContext(TransactionContext);
@@ -89,8 +92,8 @@ function Dashboard() {
   const placeholderName = modalType === 'income' ? 'Contoh: Gaji Bulanan' : 'Contoh: Belanja Bulanan';
 
   return (
-    <div className="app-container">
-      <main className="main-content">
+    <div className="page-container">
+      <div className="main-content">
         <header className="page-header">
           <div>
             <h1 className="page-title">Dashboard</h1>
@@ -151,9 +154,9 @@ function Dashboard() {
             budgets={budgets}
           />
         )}
-      </main>
+      </div>
 
-      {/* Modal */}
+      {/* Modal ... (kode modal tidak berubah) */}
       {showModal && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -283,47 +286,76 @@ function DashboardContent({ transactions, income, expense, balance, budgets }) {
     return { total: summary.total, spent, remaining: summary.total - spent };
   }, [budgetsWithSpent]);
 
-  const chartTransactions = transactions;
-  const totalChartAmount = chartTransactions.reduce((s, t) => s + Math.abs(t.amount || 0), 0);
+  // Data Chart: Hanya Pengeluaran, dikelompokkan berdasarkan kategori
+  const donutChartData = useMemo(() => {
+    const expenseTx = transactions.filter(t => t.type === 'expense');
+    const categoryTotals = expenseTx.reduce((acc, tx) => {
+      const category = tx.category || 'Lainnya'; 
+      acc[category] = (acc[category] || 0) + tx.amount;
+      return acc;
+    }, {});
+
+    const sortedData = Object.entries(categoryTotals)
+      .map(([category, amount]) => ({
+        category,
+        amount,
+      }))
+      .sort((a, b) => b.amount - a.amount); // Urutkan dari yang terbesar
+
+    return sortedData;
+  }, [transactions]);
+  
+  const totalChartAmount = donutChartData.reduce((s, d) => s + d.amount, 0);
+
 
   function generateDonutChart() {
-    if (!chartTransactions.length || totalChartAmount === 0) {
+    if (!donutChartData.length || totalChartAmount === 0) {
+      // Background abu-abu jika tidak ada data
       return (
-        <circle cx="100" cy="100" r="65" fill="none" stroke="#e5e7eb" strokeWidth="30" />
+        <circle cx="100" cy="100" r={CHART_RADIUS} fill="none" stroke="#e5e7eb" strokeWidth="30" />
       );
     }
 
-    const radius = 65;
+    const radius = CHART_RADIUS;
+    const strokeWidth = 30; // Lebar Donut
     const circumference = 2 * Math.PI * radius;
-    let cumulativePercentage = 0;
+    let cumulativeOffset = 0;
 
-    return chartTransactions.map((tx, index) => {
-      const amount = Math.abs(tx.amount || 0);
-      const percentage = totalChartAmount === 0 ? 0 : (amount / totalChartAmount) * 100;
-      const strokeDasharray = (percentage / 100) * circumference;
-      const strokeDashoffset = -(cumulativePercentage / 100) * circumference;
-      cumulativePercentage += percentage;
-      const color = COLORS[index % COLORS.length];
+    return donutChartData.map((data, index) => {
+      const amount = data.amount;
+      const percentage = totalChartAmount === 0 ? 0 : (amount / totalChartAmount); // Proporsi (0.0 hingga 1.0)
+      
+      const segmentLength = percentage * circumference;
+      // Padding kecil antar segmen (misalnya 2 piksel di circumference)
+      const paddingLength = 4; 
+      
+      const strokeDasharray = `${Math.max(0, segmentLength - paddingLength)}, ${circumference - segmentLength + paddingLength}`;
+      
+      const color = CHART_COLORS[index % CHART_COLORS.length];
 
-      return (
+      const segmentElement = (
         <circle
-          key={tx.id}
+          key={data.category} 
           cx="100"
           cy="100"
           r={radius}
           fill="none"
           stroke={color}
-          strokeWidth="30"
+          strokeWidth={strokeWidth}
           strokeDasharray={strokeDasharray}
-          strokeDashoffset={strokeDashoffset}
-          strokeLinecap="round"
+          // Offset diputar 90 derajat ke belakang (-0.25 * circumference) agar dimulai dari atas
+          strokeDashoffset={-cumulativeOffset - (0.25 * circumference)} 
+          strokeLinecap="round" // Membuat ujungnya membulat
           className="chart-segment"
         />
       );
+
+      cumulativeOffset += segmentLength; // Tambahkan panjang segmen saat ini
+      return segmentElement;
     });
   }
 
-  const recentTransactions = transactions.slice(-6);
+  const recentTransactions = transactions.slice(-6).sort((a, b) => new Date(b.date) - new Date(a.date));
 
   return (
     <div className="dashboard-content">
@@ -363,29 +395,38 @@ function DashboardContent({ transactions, income, expense, balance, budgets }) {
 
       <div className="dashboard-grid">
         <div className="card">
-          <h3 className="card-title">Distribusi Transaksi</h3>
+          <h3 className="card-title">Distribusi Pengeluaran</h3>
           <div className="chart-placeholder">
-            <svg viewBox="0 0 200 200" width="220" height="220" className="donut-chart">
-              {generateDonutChart()}
+            <svg viewBox="0 0 200 200" width="220" height="220" className="donut-chart" style={{ transform: 'rotate(-90deg)' }}> 
+                {/* Latar belakang abu-abu penuh */}
+                <circle cx="100" cy="100" r={CHART_RADIUS} fill="none" stroke="#f3f4f6" strokeWidth="30" />
+                
+                {/* Segmen Donut */}
+                {generateDonutChart()}
+                
+                {/* Kembalikan rotasi label agar tidak terbalik */}
+                <g style={{ transform: 'rotate(90deg)' }}> 
+                    {/* Tambahkan Teks atau Tooltip di tengah jika diperlukan */}
+                </g>
             </svg>
           </div>
           <div className="chart-stats">
-            <div className="total-expense">Total: <strong>{formatRp(totalChartAmount)}</strong></div>
+            <div className="total-expense">Total Pengeluaran: <strong>{formatRp(totalChartAmount)}</strong></div>
           </div>
           <div className="chart-legend">
-            {chartTransactions.length === 0 && (
+            {donutChartData.length === 0 && (
               <div className="legend-item">
-                <span className="legend-label" style={{ color: '#6b7280' }}>Belum ada transaksi</span>
+                <span className="legend-label" style={{ color: '#6b7280' }}>Belum ada pengeluaran yang dicatat</span>
               </div>
             )}
-            {chartTransactions.map((tx, idx) => {
-              const amount = Math.abs(tx.amount || 0);
+            {donutChartData.map((data, idx) => {
+              const amount = data.amount;
               const percentage = totalChartAmount === 0 ? 0 : ((amount / totalChartAmount) * 100).toFixed(1);
               return (
-                <div key={tx.id} className="legend-item">
-                  <span className="legend-color" style={{ backgroundColor: COLORS[idx % COLORS.length] }}></span>
+                <div key={data.category} className="legend-item">
+                  <span className="legend-color" style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}></span>
                   <div className="legend-info">
-                    <span className="legend-label">{tx.name || tx.category || 'Transaksi'}</span>
+                    <span className="legend-label">{data.category}</span> 
                     <span className="legend-percentage">{percentage}%</span>
                   </div>
                   <span className="legend-value">{formatRp(amount)}</span>

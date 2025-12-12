@@ -8,7 +8,7 @@ export default function Footer() {
       <div className="footer-inner">
         <span className="footer-brand">FinanceApp © {year}</span>
         <span className="footer-note">
-          Demo mode — gunakan email & password apa saja saat development
+          Dibuat dengan ❤️ oleh Kelompok Kami
         </span>
       </div>
     </footer>
