@@ -1,32 +1,32 @@
 import { createContext, useState, useEffect } from "react";
+import { useBudget } from "./BudgetContext";
 
 export const TransactionContext = createContext();
 
 export function TransactionProvider({ children }) {
   const [transactions, setTransactions] = useState([]);
-  const [budgets, setBudgets] = useState([]);
 
-  // load from localStorage once
+  // budgets come from BudgetContext
+  const { budgets, addBudget, updateBudget, deleteBudget } = useBudget();
+
+  // load transactions from localStorage once
   useEffect(() => {
     try {
       const t = JSON.parse(localStorage.getItem('fa_transactions') || '[]');
-      const b = JSON.parse(localStorage.getItem('fa_budgets') || '[]');
       setTransactions(t);
-      setBudgets(b);
     } catch (e) {
-      console.error('Failed to parse storage', e);
+      console.error('TransactionProvider: Failed to parse storage', e);
     }
   }, []);
 
   // persist transactions
   useEffect(() => {
-    localStorage.setItem('fa_transactions', JSON.stringify(transactions));
+    try {
+      localStorage.setItem('fa_transactions', JSON.stringify(transactions));
+    } catch (e) {
+      console.error('TransactionProvider: Failed to persist transactions', e);
+    }
   }, [transactions]);
-
-  // persist budgets
-  useEffect(() => {
-    localStorage.setItem('fa_budgets', JSON.stringify(budgets));
-  }, [budgets]);
 
   function addTransaction(newTx) {
     setTransactions((prev) => [...prev, newTx]);
@@ -42,24 +42,13 @@ export function TransactionProvider({ children }) {
     setTransactions((prev) => prev.filter(tx => tx.id !== id));
   }
 
-  function addBudget(budget) {
-    setBudgets((prev) => [...prev, budget]);
-  }
-
-  function updateBudget(id, patch) {
-    setBudgets((prev) => prev.map(b => b.id === id ? { ...b, ...patch } : b));
-  }
-
-  function deleteBudget(id) {
-    setBudgets((prev) => prev.filter(b => b.id !== id));
-  }
-
   return (
     <TransactionContext.Provider value={{
       transactions,
       addTransaction,
       updateTransaction,
       deleteTransaction,
+      // expose budget API from BudgetContext for compatibility
       budgets,
       addBudget,
       updateBudget,

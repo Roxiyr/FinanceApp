@@ -2,7 +2,19 @@
 .app-container {
   min-height: 100vh;
   background-color: #f9fafb; /* Light background for the whole page */
-  padding: 32px;
+  /* push dashboard content lower to match other pages */
+  padding: 72px 32px 32px;
+}
+
+/* Provide a `page-container` alias so Dashboard matches other pages (Pendapatan/Anggaran)
+   and the footer will naturally sit below page content. */
+.page-container {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 72px 36px 56px;
+  margin-top: 72px;
+  background-color: transparent;
 }
 
 .main-content {
