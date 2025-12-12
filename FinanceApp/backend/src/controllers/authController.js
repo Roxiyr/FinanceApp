@@ -39,6 +39,8 @@ class AuthController {
 
       // Cari user di database
       const user = await User.findByEmail(email);
+      // Debug: tunjukkan apakah user ditemukan dan apakah kolom password ada (tidak cetak password penuh)
+      console.log('[AUTH] login attempt for', email, 'userFound=', !!user, 'pwLen=', user && user.password ? user.password.length : 0);
       
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/0184059c-dd5d-4018-a26c-8ffaf95c6525', {

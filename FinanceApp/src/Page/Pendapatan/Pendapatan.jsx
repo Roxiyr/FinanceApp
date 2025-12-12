@@ -1,16 +1,20 @@
 import { useContext, useState } from 'react';
 import { TransactionContext } from '../../context/TransactionContext';
 import { formatRp } from '../../logic/format';
-import { TrendingUp, Trash2, Edit2, X } from 'lucide-react';
+import { TrendingUp, Trash2, Edit2 } from 'lucide-react';
 import './Pendapatan.css';
 
 const INCOME_CATEGORIES = ['Gaji', 'Freelance', 'Bonus', 'Investasi', 'Lainnya'];
 
 export default function Pendapatan() {
-  const { transactions, deleteTransaction, updateTransaction } = useContext(TransactionContext);
+  const { transactions, deleteTransaction, updateTransaction, addTransaction } = useContext(TransactionContext);
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState(null);
   const [isCustomCategory, setIsCustomCategory] = useState(false);
+  // PERBAIKAN: state 'form' dihapus karena tidak dipakai
+  // const [form, setForm] = useState({ name:'', category:'Gaji', amount:'', date:'', notes:'' });
+  // PERBAIKAN: state 'loading' dihapus karena tidak dipakai
+  // const [loading, setLoading] = useState(false);
   
   const incomeTransactions = transactions.filter(t => t.type === 'income');
   const totalIncome = incomeTransactions.reduce((sum, t) => sum + t.amount, 0);
@@ -51,6 +55,29 @@ export default function Pendapatan() {
       setEditData(prev => ({ ...prev, category: value }));
     }
   }
+
+  // PERBAIKAN: Fungsi handleSubmit dihapus karena tidak dipanggil
+  /*   async function handleSubmit(e) {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await addTransaction({
+        type: 'income',
+        name: form.name,
+        category: form.category,
+        amount: Number(form.amount),
+        date: form.date || new Date().toISOString(),
+        notes: form.notes || ''
+      });
+      setForm({ name:'', category:'Gaji', amount:'', date:'', notes:'' });
+    } catch (err) {
+      console.error('Failed add income', err);
+      alert(err.message || 'Gagal menambahkan pendapatan');
+    } finally {
+      setLoading(false);
+    }
+  }
+  */
 
   return (
     <div className="page-container">
@@ -172,6 +199,8 @@ export default function Pendapatan() {
           </div>
         </div>
       )}
+
+      {/* Add-transaction form removed as requested */}
     </div>
   );
 }

@@ -65,22 +65,6 @@ export function AuthProvider({ children }) {
     }
 
     try {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/0184059c-dd5d-4018-a26c-8ffaf95c6525', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: 'debug-session',
-          runId: 'run3',
-          hypothesisId: 'H10',
-          location: 'AuthContext.jsx:login:request',
-          message: 'Login fetch start',
-          data: { email },
-          timestamp: Date.now()
-        })
-      }).catch(() => {});
-      // #endregion
-
       const response = await fetch('http://localhost:4001/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -91,22 +75,6 @@ export function AuthProvider({ children }) {
       if (!response.ok) {
         throw new Error(data.error || 'Login gagal');
       }
-
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/0184059c-dd5d-4018-a26c-8ffaf95c6525', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: 'debug-session',
-          runId: 'run3',
-          hypothesisId: 'H11',
-          location: 'AuthContext.jsx:login:success',
-          message: 'Login fetch success',
-          data: { email, hasToken: !!data.token, hasUser: !!data.user },
-          timestamp: Date.now()
-        })
-      }).catch(() => {});
-      // #endregion
 
       // Simpan token
       if (data.token) {

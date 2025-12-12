@@ -1,30 +1,36 @@
 import { useState, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom'; // useLocation ditambahkan
 import { AuthContext } from '../context/AuthContext';
-import { Menu, X, LogOut, BarChart3, TrendingUp, TrendingDown, Home } from 'lucide-react';
+import { Menu, X, LogOut, BarChart3, TrendingUp, TrendingDown, Home, Target } from 'lucide-react';
 import './Navbar.css';
 
-export default function Navbar({ currentPage = 'dashboard' }) {
+// Hapus prop 'currentPage'
+export default function Navbar() {
   const navigate = useNavigate();
+  const location = useLocation(); // Mendapatkan objek lokasi (berisi pathname)
   const { logout, isAuthenticated } = useContext(AuthContext);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: Home },
-    { id: 'pendapatan', label: 'Pendapatan', icon: TrendingUp },
-    { id: 'pengeluaran', label: 'Pengeluaran', icon: TrendingDown },
-    { id: 'laporan', label: 'Laporan', icon: BarChart3 },
+    // Tambahkan properti 'path' yang sesuai
+    { id: 'dashboard', label: 'Dashboard', path: '/', icon: Home },
+    { id: 'pendapatan', label: 'Pendapatan', path: '/pendapatan', icon: TrendingUp },
+    { id: 'pengeluaran', label: 'Pengeluaran', path: '/pengeluaran', icon: TrendingDown },
+    { id: 'anggaran', label: 'Anggaran', path: '/anggaran', icon: Target },
+    { id: 'laporan', label: 'Laporan', path: '/laporan', icon: BarChart3 },
   ];
 
-  function handleNavClick(pageId) {
-    const routeMap = {
-      dashboard: '/',
-      pendapatan: '/pendapatan',
-      pengeluaran: '/pengeluaran',
-      laporan: '/laporan',
-      login: '/login'
-    };
+  // RouteMap digunakan untuk fungsi handleNavClick (navigate)
+  const routeMap = {
+    dashboard: '/',
+    pendapatan: '/pendapatan',
+    pengeluaran: '/pengeluaran',
+    anggaran: '/anggaran',
+    laporan: '/laporan',
+    login: '/login'
+  };
 
+  function handleNavClick(pageId) {
     const target = routeMap[pageId] || '/';
     navigate(target);
     setMobileMenuOpen(false);
@@ -39,6 +45,12 @@ export default function Navbar({ currentPage = 'dashboard' }) {
     }
     setMobileMenuOpen(false);
   }
+  
+  // Fungsi pembantu untuk menentukan apakah item menu saat ini aktif
+  const isActive = (path) => {
+      // Menggunakan kecocokan persis antara URL saat ini dengan path item menu
+      return location.pathname === path;
+  };
 
   return (
     <header className="navbar">
@@ -58,12 +70,15 @@ export default function Navbar({ currentPage = 'dashboard' }) {
         <nav className="nav-menu" aria-label="Main navigation">
           {menuItems.map((item) => {
             const Icon = item.icon;
+            const isItemActive = isActive(item.path); // KUNCI PERBAIKAN: Cek status aktif
+
             return (
               <button
                 key={item.id}
                 onClick={() => handleNavClick(item.id)}
-                className={`nav-item ${currentPage === item.id ? 'nav-item-active' : ''}`}
-                aria-current={currentPage === item.id ? 'page' : undefined}
+                // Terapkan kelas aktif berdasarkan URL
+                className={`nav-item ${isItemActive ? 'nav-item-active' : ''}`}
+                aria-current={isItemActive ? 'page' : undefined}
                 type="button"
               >
                 <Icon width={18} height={18} />
@@ -119,11 +134,14 @@ export default function Navbar({ currentPage = 'dashboard' }) {
           <nav className="mobile-nav">
             {menuItems.map((item) => {
               const Icon = item.icon;
+              const isItemActive = isActive(item.path); // KUNCI PERBAIKAN: Cek status aktif
+
               return (
                 <button
                   key={item.id}
                   onClick={() => handleNavClick(item.id)}
-                  className={`mobile-nav-item ${currentPage === item.id ? 'mobile-nav-item-active' : ''}`}
+                  // Terapkan kelas aktif berdasarkan URL
+                  className={`mobile-nav-item ${isItemActive ? 'mobile-nav-item-active' : ''}`}
                   type="button"
                 >
                   <Icon width={20} height={20} />
@@ -144,7 +162,7 @@ export default function Navbar({ currentPage = 'dashboard' }) {
                 <span>Keluar</span>
               </button>
             )}
-            {!isLoggedIn && (
+            {!isAuthenticated() && ( 
               <button 
                 onClick={() => handleNavClick('login')}
                 className="btn btn-login btn-block"
