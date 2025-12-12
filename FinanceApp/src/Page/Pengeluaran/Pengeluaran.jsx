@@ -7,7 +7,7 @@ import './Pengeluaran.css';
 const EXPENSE_CATEGORIES = ['Makan', 'Transportasi', 'Hiburan', 'Kesehatan', 'Belanja', 'Utilitas', 'Lainnya'];
 
 export default function Pengeluaran() {
-  const { transactions, deleteTransaction, updateTransaction } = useContext(TransactionContext);
+  const { transactions, deleteTransaction, updateTransaction, budgets = [] } = useContext(TransactionContext);
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState(null);
   const [isCustomCategory, setIsCustomCategory] = useState(false);
@@ -18,7 +18,8 @@ export default function Pengeluaran() {
   function startEdit(tx) {
     setEditingId(tx.id);
     setEditData({ ...tx });
-    setIsCustomCategory(!EXPENSE_CATEGORIES.includes(tx.category));
+    const merged = Array.from(new Set([...EXPENSE_CATEGORIES, ...(budgets || []).map(b => b.category || b.name)]));
+    setIsCustomCategory(!merged.includes(tx.category));
   }
 
   function cancelEdit() {
@@ -111,7 +112,7 @@ export default function Pengeluaran() {
                         onChange={handleCategoryChange}
                         className="edit-input"
                       >
-                        {EXPENSE_CATEGORIES.map(cat => (
+                        {Array.from(new Set([...EXPENSE_CATEGORIES, ...(budgets || []).map(b => b.category || b.name)])).map(cat => (
                           <option key={cat} value={cat}>{cat}</option>
                         ))}
                         <option value="custom">+ Kategori Baru</option>

@@ -8,7 +8,12 @@ export function BudgetProvider({ children }) {
   useEffect(() => {
     try {
       const raw = localStorage.getItem('fa_budgets') || '[]';
-      setBudgets(JSON.parse(raw));
+      const parsed = JSON.parse(raw);
+      // Normalize amounts to numbers to avoid string issues
+      const normalized = Array.isArray(parsed)
+        ? parsed.map((b) => ({ ...b, amount: Number(b.amount || 0) }))
+        : [];
+      setBudgets(normalized);
     } catch (e) {
       console.error('BudgetProvider: failed to load budgets', e);
       setBudgets([]);

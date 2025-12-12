@@ -76,7 +76,8 @@
 /* ==================================== */
 .budgets-grid { 
     display:grid; 
-    grid-template-columns:repeat(auto-fit, minmax(350px, 1fr)); 
+    /* slightly smaller min width to fit more on narrow screens */ 
+    grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); 
     gap:20px; 
 }
 
@@ -315,4 +316,14 @@
     .modal { 
         margin: 0 15px; 
     }
-}
+    /* Make modal full-screen feeling on small devices for better UX */ 
+    .modal {
+        width: 100%;
+        max-width: none;
+        height: 100%;
+        border-radius: 0;
+        padding: 18px;
+        box-sizing: border-box;
+        overflow: auto;
+    }
+ }
