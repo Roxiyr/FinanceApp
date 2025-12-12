@@ -3,10 +3,14 @@ import { TransactionContext } from '../../context/TransactionContext';
 import { formatRp } from '../../logic/format';
 import { attachSpentToBudgets, summarizeBudgets, getBudgetStatus, sortBudgetsByRemaining } from '../../logic/budgetLogic';
 import { PlusCircle, Edit3, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 import './Anggaran.css';
 
 export default function Anggaran() {
   const { budgets, addBudget, updateBudget, deleteBudget, transactions } = useContext(TransactionContext);
+  const [showModal, setShowModal] = useState(false);
+  const [editing, setEditing] = useState(null); // budget id atau null
+  const [form, setForm] = useState({ name: '', category: '', amount: '', period: 'Bulanan' });
 
   const budgetsWithSpent = useMemo(() => {
     const mappedBudgets = budgets.map((b) => ({
@@ -31,15 +35,50 @@ export default function Anggaran() {
     return { totalBudget: total, totalSpent: spent, remaining: total - spent };
   }, [budgets, transactions]);
 
-  // simple add demo budget (you can replace with modal form)
-  function handleAddDemo() {
-    addBudget({
-      id: crypto.randomUUID(),
-      name: 'Makanan',
-      category: 'Makanan',
-      amount: 500000,
-      period: 'Bulanan'
+  function openAdd() {
+    setEditing(null);
+    setForm({ name: '', category: '', amount: '', period: 'Bulanan' });
+    setShowModal(true);
+  }
+
+  function openEdit(b) {
+    setEditing(b.id);
+    // Memastikan form terisi dengan data yang ada
+    setForm({ 
+        name: b.name || b.category || '', 
+        category: b.category || '', 
+        amount: b.amount || '', 
+        period: b.period || 'Bulanan' 
     });
+    setShowModal(true);
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    const payload = {
+      id: editing || crypto.randomUUID(),
+      name: form.name,
+      category: form.category || form.name, // Fallback category ke name
+      amount: Number(form.amount) || 0,
+      period: form.period || 'Bulanan'
+    };
+    try {
+      if (editing) {
+        await updateBudget(editing, payload);
+      } else {
+        await addBudget(payload);
+      }
+      setShowModal(false);
+    } catch (err) {
+      console.error('Budget save failed', err);
+      alert(err.message || 'Gagal menyimpan anggaran');
+    }
+  }
+
+  function handleDelete(id) {
+    if (confirm('Hapus anggaran ini?')) {
+      deleteBudget(id);
+    }
   }
 
   return (
@@ -50,7 +89,7 @@ export default function Anggaran() {
           <p className="page-subtitle">Tetapkan dan lacak anggaran Anda</p>
         </div>
         <div>
-          <button className="btn btn-primary" onClick={handleAddDemo}><PlusCircle/> Tambah Anggaran</button>
+          <button className="btn btn-primary" onClick={openAdd}><PlusCircle/> Tambah Anggaran</button>
         </div>
       </div>
 
@@ -75,11 +114,22 @@ export default function Anggaran() {
 
       <div className="budgets-grid">
         {budgetsWithSpent.length === 0 ? (
-          <div className="empty-card">Belum ada anggaran. Klik Tambah Anggaran.</div>
+          <div className="empty-state">
+              <h3 style={{color: '#6c757d'}}>Tidak Ada Anggaran Ditetapkan</h3>
+              <p style={{color: '#868e96'}}>Kelola keuangan Anda lebih baik dengan menetapkan anggaran.</p>
+              <button className="btn btn-primary" onClick={openAdd} style={{marginTop: '15px'}}><PlusCircle size={16}/> Buat Anggaran Pertama</button>
+          </div>
         ) : budgetsWithSpent.map(b => {
           const status = getBudgetStatus(b.amount || 0, b.spent || 0);
           const pct = b.amount ? Math.min(100, Math.round((b.spent / b.amount) * 100)) : 0;
           const badgeClass = status.status === 'over' ? 'badge-over' : status.status === 'warn' ? 'badge-warn' : 'badge-safe';
+          
+          // Menentukan warna progress fill berdasarkan status (sesuai dengan anggran.css)
+          const progressColor = 
+            status.status === 'over' ? '#b91c1c' : // Merah
+            status.status === 'warn' ? '#92400e' : // Kuning
+            '#166534'; // Hijau
+
           return (
             <div key={b.id} className="budget-card">
               <div className="budget-header">
@@ -91,15 +141,15 @@ export default function Anggaran() {
                   <span className={`budget-badge ${badgeClass}`}>
                     {status.status === 'over' ? 'Over' : status.status === 'warn' ? 'Hampir' : 'Aman'}
                   </span>
-                  <button onClick={() => updateBudget(b.id, { amount: b.amount })} title="Edit"><Edit3/></button>
-                  <button onClick={() => deleteBudget(b.id)} title="Hapus"><Trash2/></button>
+                  <button onClick={() => openEdit(b)} title="Edit"><Edit3 size={18}/></button>
+                  <button onClick={() => handleDelete(b.id)} title="Hapus"><Trash2 size={18}/></button>
                 </div>
               </div>
 
               <div className="budget-body">
                 <div className="budget-amount">{formatRp(b.spent)} / {formatRp(b.amount)}</div>
                 <div className="budget-progress">
-                  <div className="budget-progress-fill" style={{ width: `${pct}%` }} />
+                  <div className="budget-progress-fill" style={{ width: `${pct}%`, backgroundColor: progressColor }} />
                 </div>
                 <div className="budget-footer">
                   <div className="budget-percent">{pct}%</div>
@@ -110,6 +160,45 @@ export default function Anggaran() {
           );
         })}
       </div>
+      
+      {/* Modal for add/edit budget */}
+      {showModal && (
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>{editing ? 'Edit Anggaran' : 'Tambah Anggaran'}</h3>
+            <form onSubmit={handleSubmit} className="budget-form">
+              <div className="form-group full">
+                <label>Nama</label>
+                <input type="text" value={form.name} onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))} required />
+              </div>
+              
+              <div className="form-group">
+                <label>Kategori</label>
+                <input type="text" value={form.category} onChange={(e) => setForm(prev => ({ ...prev, category: e.target.value }))} />
+              </div>
+
+              <div className="form-group">
+                <label>Jumlah (Rp)</label>
+                <input type="number" value={form.amount} onChange={(e) => setForm(prev => ({ ...prev, amount: e.target.value }))} required />
+              </div>
+
+              <div className="form-group full">
+                <label>Periode</label>
+                <select value={form.period} onChange={(e) => setForm(prev => ({ ...prev, period: e.target.value }))}>
+                  <option>Bulanan</option>
+                  <option>Tahunan</option>
+                  <option>Satu Kali</option>
+                </select>
+              </div>
+
+              <div className="actions">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Batal</button>
+                <button type="submit" className="btn btn-primary">{editing ? 'Simpan' : 'Tambah'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

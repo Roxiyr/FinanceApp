@@ -1,14 +1,17 @@
 import { useContext, useMemo } from 'react';
 import { TransactionContext } from '../../context/TransactionContext';
 import { calcTotals } from '../../logic/transactionsLogic';
-import { formatRp, calculatePercent, formatPercent } from '../../logic/format';
+// PERBAIKAN: Hanya mengimpor formatRp
+import { formatRp } from '../../logic/format'; 
 import { summarizeBudgets } from '../../logic/budgetLogic';
 import { BarChart3, TrendingUp, TrendingDown, Target } from 'lucide-react';
+import BarChart from '../../components/BarChart';
 import './Laporan.css';
 
 export default function Laporan() {
   const { transactions, budgets } = useContext(TransactionContext);
-  const { income, expense, balance } = calcTotals(transactions);
+  // calcTotals menghasilkan income, expense, balance
+  const { income, expense, balance } = calcTotals(transactions); 
 
   const budgetSummary = useMemo(() => {
     const { total, count } = summarizeBudgets(budgets);
@@ -28,6 +31,10 @@ export default function Laporan() {
 
   const expenseByCategory = getExpenseByCategory();
   const totalExpense = Object.values(expenseByCategory).reduce((a, b) => a + b, 0);
+
+  // Variabel 'net' tidak digunakan karena 'balance' sudah tersedia dari calcTotals
+  // const totalIncome = transactions.reduce((s,t)=> t.type==='income' ? s + Number(t.amount) : s, 0);
+  // const net = totalIncome - totalExpense;
 
   return (
     <div className="page-container">
@@ -67,7 +74,7 @@ export default function Laporan() {
             <div className={`summary-value ${balance >= 0 ? 'balance-positive' : 'balance-negative'}`}>
               {formatRp(balance)}
             </div>
-          </div>
+            </div>
         </div>
 
         <div className="summary-card budget-card">
@@ -87,34 +94,24 @@ export default function Laporan() {
       {/* Breakdown */}
       <div className="breakdown-section">
         <h2 className="section-title">Rincian Pengeluaran</h2>
-        
+
         {Object.keys(expenseByCategory).length === 0 ? (
           <div className="empty-breakdown">
             <BarChart3 width={48} height={48} />
             <p>Belum ada data pengeluaran untuk ditampilkan</p>
           </div>
         ) : (
-          <div className="breakdown-list">
-            {Object.entries(expenseByCategory).map(([category, amount]) => {
-              const percentage = calculatePercent(amount, totalExpense);
-              return (
-                <div key={category} className="breakdown-item">
-                  <div className="breakdown-info">
-                    <div className="breakdown-name">{category}</div>
-                    <div className="breakdown-bar">
-                      <div 
-                        className="breakdown-progress"
-                        style={{ width: `${percentage}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                  <div className="breakdown-stats">
-                    <span className="breakdown-percentage">{formatPercent(percentage)}</span>
-                    <span className="breakdown-amount">{formatRp(amount)}</span>
-                  </div>
-                </div>
-              );
-            })}
+          <div style={{ paddingTop: 8 }}>
+            <BarChart
+              data={Object.entries(expenseByCategory).map(([category, amount], idx) => ({
+                label: category,
+                value: amount,
+                color: ["#2563eb", "#ec4899", "#a855f7", "#22c55e", "#f59e0b"][idx % 5],
+                format: (v) => formatRp(v)
+              }))}
+              width={780}
+              labelWidth={180}
+            />
           </div>
         )}
       </div>
