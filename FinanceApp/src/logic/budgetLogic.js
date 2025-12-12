@@ -18,16 +18,18 @@ export function summarizeBudgets(budgets = []) {
  * @returns {Array<{id, amount, spent:number, remaining:number}>}
  */
 export function attachSpentToBudgets(budgets = [], transactions = []) {
-  const spentPerBudget = transactions.reduce((acc, tx) => {
-    // default: hanya hitung expense, abaikan income
-    if (tx.type && tx.type !== 'expense') return acc;
-    if (!tx.budgetId) return acc;
-    acc[tx.budgetId] = (acc[tx.budgetId] || 0) + (Number(tx.amount) || 0);
-    return acc;
-  }, {});
-
+  // Be tolerant: transactions may reference a budget by id or by category string.
+  // We'll compute spent per budget by matching transaction.budgetId or transaction.category
+  // against both budget.id and budget.category.
   return budgets.map((b) => {
-    const spent = spentPerBudget[b.id] || 0;
+    const spent = transactions.reduce((s, tx) => {
+      if (tx.type && tx.type !== 'expense') return s;
+      const txRef = tx.budgetId ?? tx.category ?? null;
+      if (txRef == null) return s;
+      const matches = String(txRef) === String(b.id) || String(txRef) === String(b.category) || String(tx.category) === String(b.id) || String(tx.category) === String(b.category);
+      if (matches) return s + (Number(tx.amount) || 0);
+      return s;
+    }, 0);
     const remaining = (Number(b.amount) || 0) - spent;
     return { ...b, spent, remaining };
   });

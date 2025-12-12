@@ -32,7 +32,9 @@ function Dashboard() {
     setModalType(type);
     setShowModal(true);
     setIsCustomCategory(false);
-    const categories = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+    const categories = type === 'income'
+      ? INCOME_CATEGORIES
+      : Array.from(new Set([...EXPENSE_CATEGORIES, ...(budgets || []).map(b => b.category || b.name)]) );
     setFormData({ 
       name: '',
       category: categories[0], 
@@ -88,7 +90,9 @@ function Dashboard() {
     }
   }
 
-  const categories = modalType === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+  const categories = modalType === 'income'
+    ? INCOME_CATEGORIES
+    : Array.from(new Set([...EXPENSE_CATEGORIES, ...(budgets || []).map(b => b.category || b.name)]) );
   const placeholderName = modalType === 'income' ? 'Contoh: Gaji Bulanan' : 'Contoh: Belanja Bulanan';
 
   return (

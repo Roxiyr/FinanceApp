@@ -6,6 +6,9 @@ import { PlusCircle, Edit3, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import './Anggaran.css';
 
+const INCOME_CATEGORIES = ['Gaji', 'Freelance', 'Bonus', 'Investasi', 'Lainnya'];
+const EXPENSE_CATEGORIES = ['Makan', 'Transportasi', 'Hiburan', 'Kesehatan', 'Belanja', 'Utilitas', 'Lainnya'];
+
 export default function Anggaran() {
   const { budgets, addBudget, updateBudget, deleteBudget, transactions } = useContext(TransactionContext);
   const [showModal, setShowModal] = useState(false);
@@ -55,19 +58,34 @@ export default function Anggaran() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    // Basic client-side validation
+    const nameOrCategory = (form.name || form.category || '').trim();
+    const amountNum = Number(form.amount);
+    if (!nameOrCategory) {
+      alert('Nama atau kategori harus diisi.');
+      return;
+    }
+    if (!form.amount || Number.isNaN(amountNum) || amountNum <= 0) {
+      alert('Jumlah anggaran harus di angka lebih besar dari 0.');
+      return;
+    }
+
     const payload = {
       id: editing || crypto.randomUUID(),
-      name: form.name,
-      category: form.category || form.name, // Fallback category ke name
-      amount: Number(form.amount) || 0,
+      name: form.name.trim(),
+      category: form.category.trim() || form.name.trim(), // Fallback category ke name
+      amount: amountNum,
       period: form.period || 'Bulanan'
     };
+
     try {
       if (editing) {
         await updateBudget(editing, payload);
       } else {
         await addBudget(payload);
       }
+      // reset form and close
+      setForm({ name: '', category: '', amount: '', period: 'Bulanan' });
       setShowModal(false);
     } catch (err) {
       console.error('Budget save failed', err);
@@ -174,7 +192,12 @@ export default function Anggaran() {
               
               <div className="form-group">
                 <label>Kategori</label>
-                <input type="text" value={form.category} onChange={(e) => setForm(prev => ({ ...prev, category: e.target.value }))} />
+                <select value={form.category} onChange={(e) => setForm(prev => ({ ...prev, category: e.target.value }))}>
+                  <option value="">-- Pilih Kategori --</option>
+                  {Array.from(new Set([...INCOME_CATEGORIES, ...EXPENSE_CATEGORIES, ...(budgets || []).map(b => b.category || b.name)])).map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="form-group">
