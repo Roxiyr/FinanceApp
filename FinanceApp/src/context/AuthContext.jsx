@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect } from 'react';
+import { createContext, useState, useEffect } from "react";
 
 export const AuthContext = createContext();
 
@@ -6,56 +6,51 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load user dari localStorage saat mount
+  /* =========================
+     LOAD USER SAAT APP DIBUKA
+  ========================= */
   useEffect(() => {
     try {
-      const savedUser = JSON.parse(localStorage.getItem('fa_user'));
+      const savedUser = localStorage.getItem("fa_user");
       if (savedUser) {
-        setUser(savedUser);
+        setUser(JSON.parse(savedUser));
       }
     } catch (e) {
-      console.error('Failed to load user', e);
+      console.error("AuthContext: failed to load user", e);
+      localStorage.removeItem("fa_user");
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, []);
 
-  // Save user ke localStorage
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem('fa_user', JSON.stringify(user));
-    } else {
-      localStorage.removeItem('fa_user');
-    }
-  }, [user]);
+  /* =========================
+     LOGIN
+  ========================= */
+  async function login(email, password) {
+    const res = await fetch("http://localhost:4001/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
 
-  function login(email, password) {
-    // Validasi input
-    if (!email || !password) {
-      throw new Error('Email dan password harus diisi');
-    }
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Login gagal");
 
-    // Simulasi login (ganti dengan API real nanti)
-    const newUser = {
-      id: crypto.randomUUID(),
-      email: email,
-      name: email.split('@')[0], // ambil nama dari email
-      createdAt: new Date().toISOString()
-    };
-
-    setUser(newUser);
-    return newUser;
+    localStorage.setItem("fa_token", data.token);
+    localStorage.setItem("fa_user", JSON.stringify(data.user));
+    setUser(data.user);
   }
 
+  /* =========================
+     LOGOUT (AMAN)
+  ========================= */
   function logout() {
+    localStorage.removeItem("fa_user");
+    localStorage.removeItem("fa_token");
     setUser(null);
-  }
 
-  function updateProfile(updates) {
-    if (user) {
-      const updatedUser = { ...user, ...updates };
-      setUser(updatedUser);
-      return updatedUser;
-    }
+    // ❗ JANGAN sentuh fa_transactions
+    // ❗ JANGAN pakai localStorage.clear()
   }
 
   function isAuthenticated() {
@@ -66,11 +61,10 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider
       value={{
         user,
-        isLoading,
         login,
         logout,
-        updateProfile,
-        isAuthenticated
+        isAuthenticated,
+        isLoading,
       }}
     >
       {children}

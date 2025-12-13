@@ -1,81 +1,23 @@
-import React, { useState, useEffect, useContext } from 'react';
-import './App.css';
-import { TransactionProvider } from './context/TransactionContext';
-import { AuthProvider, AuthContext } from './context/AuthContext';
-import Navbar from './components/Navbar';
-import Dashboard from './Page/Dashboard/Dashboard';
-import Pendapatan from './Page/Pendapatan/Pendapatan';
-import Pengeluaran from './Page/Pengeluaran/Pengeluaran';
-import Laporan from './Page/Laporan/Laporan';
-import Anggaran from './Page/Anggaran/Anggaran';
-import LoginPage from './Page/Login/LoginPage';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { useContext } from "react";
 
-function AppContent() {
-  const { user, logout } = useContext(AuthContext);
-  const initialPage = (typeof window !== 'undefined' && window.location.hash) 
-    ? window.location.hash.replace('#','') 
-    : 'dashboard';
+import { AuthProvider, AuthContext } from "./context/AuthContext";
+import { TransactionProvider } from "./context/TransactionContext";
 
-  const [currentPage, setCurrentPage] = useState(initialPage);
+import Navbar from "./components/Navbar";
+import Footer from "./components/footer/footer";
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.location.hash = currentPage;
-    }
-  }, [currentPage]);
+import Dashboard from "./Page/Dashboard/Dashboard";
+import Pendapatan from "./Page/Pendapatan/Pendapatan";
+import Pengeluaran from "./Page/Pengeluaran/Pengeluaran";
+import Laporan from "./Page/Laporan/Laporan";
+import Anggaran from "./Page/Anggaran/Anggaran";
+import LoginPage from "./Page/Login/LoginPage";
 
-  useEffect(() => {
-    function onHashChange() {
-      const page = window.location.hash.replace('#','') || 'dashboard';
-      setCurrentPage(page);
-    }
-    window.addEventListener('hashchange', onHashChange);
-    return () => window.removeEventListener('hashchange', onHashChange);
-  }, []);
-
-  function handleNavigate(pageId) {
-    console.log('App received navigation to:', pageId);
-    setCurrentPage(pageId);
-    window.scrollTo(0,0);
-  }
-
-  function handleLogout() {
-    console.log('Logout clicked');
-    logout();
-    setCurrentPage('dashboard');
-  }
-
-  function renderPage() {
-    // Jika belum login, tampil login page
-    if (!user) {
-      return <LoginPage />;
-    }
-
-    // Jika sudah login, tampil halaman sesuai currentPage
-    switch (currentPage) {
-      case 'dashboard': return <Dashboard />;
-      case 'pendapatan': return <Pendapatan />;
-      case 'pengeluaran': return <Pengeluaran />;
-      case 'laporan': return <Laporan />;
-      case 'anggaran': return <Anggaran />;
-      default: return <Dashboard />;
-    }
-  }
-
-  return (
-    <>
-      {user && (
-        <Navbar 
-          currentPage={currentPage}
-          onNavigate={handleNavigate}
-          isLoggedIn={!!user}
-          onLogout={handleLogout}
-        />
-      )}
-      {renderPage()}
-    </>
-  );
+function RequireAuth({ children }) {
+  const { isAuthenticated, isLoading } = useContext(AuthContext);
+  if (isLoading) return null;
+  return isAuthenticated() ? children : <Navigate to="/login" />;
 }
 
 export default function App() {
@@ -84,8 +26,25 @@ export default function App() {
       <TransactionProvider>
         <Router>
           <Routes>
-            <Route path="/" element={<LoginPage />} />
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route
+              path="/*"
+              element={
+                <RequireAuth>
+                  <>
+                    <Navbar />
+                    <Routes>
+                      <Route path="/" element={<Dashboard />} />
+                      <Route path="/pendapatan" element={<Pendapatan />} />
+                      <Route path="/pengeluaran" element={<Pengeluaran />} />
+                      <Route path="/laporan" element={<Laporan />} />
+                      <Route path="/anggaran" element={<Anggaran />} />
+                    </Routes>
+                    <Footer />
+                  </>
+                </RequireAuth>
+              }
+            />
           </Routes>
         </Router>
       </TransactionProvider>

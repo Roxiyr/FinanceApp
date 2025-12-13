@@ -1,70 +1,82 @@
 import { createContext, useState, useEffect } from "react";
+import { useBudget } from "./BudgetContext";
 
 export const TransactionContext = createContext();
 
 export function TransactionProvider({ children }) {
-  const [transactions, setTransactions] = useState([]);
-  const [budgets, setBudgets] = useState([]);
 
-  // load from localStorage once
+  /* =========================
+     LOAD LANGSUNG DARI LOCALSTORAGE
+  ========================= */
+  const [transactions, setTransactions] = useState(() => {
+    try {
+      const saved = localStorage.getItem("fa_transactions");
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.error("TransactionProvider: parse error", e);
+      return [];
+    }
+  });
+
+  // budgets from BudgetContext
+  const { budgets, addBudget, updateBudget, deleteBudget } = useBudget();
+
+  /* =========================
+     SIMPAN SETIAP PERUBAHAN
+  ========================= */
   useEffect(() => {
     try {
-      const t = JSON.parse(localStorage.getItem('fa_transactions') || '[]');
-      const b = JSON.parse(localStorage.getItem('fa_budgets') || '[]');
-      setTransactions(t);
-      setBudgets(b);
+      localStorage.setItem(
+        "fa_transactions",
+        JSON.stringify(transactions)
+      );
     } catch (e) {
-      console.error('Failed to parse storage', e);
+      console.error("TransactionProvider: persist error", e);
     }
-  }, []);
-
-  // persist transactions
-  useEffect(() => {
-    localStorage.setItem('fa_transactions', JSON.stringify(transactions));
   }, [transactions]);
 
-  // persist budgets
-  useEffect(() => {
-    localStorage.setItem('fa_budgets', JSON.stringify(budgets));
-  }, [budgets]);
-
+  /* =========================
+     CRUD TRANSACTION
+  ========================= */
   function addTransaction(newTx) {
-    setTransactions((prev) => [...prev, newTx]);
+    setTransactions(prev => [
+      ...prev,
+      {
+        id: Date.now(),   // pastikan ID selalu ada
+        ...newTx
+      }
+    ]);
   }
 
   function updateTransaction(id, updates) {
-    setTransactions((prev) => 
-      prev.map(tx => tx.id === id ? { ...tx, ...updates } : tx)
+    setTransactions(prev =>
+      prev.map(tx =>
+        tx.id === id ? { ...tx, ...updates } : tx
+      )
     );
   }
 
   function deleteTransaction(id) {
-    setTransactions((prev) => prev.filter(tx => tx.id !== id));
-  }
-
-  function addBudget(budget) {
-    setBudgets((prev) => [...prev, budget]);
-  }
-
-  function updateBudget(id, patch) {
-    setBudgets((prev) => prev.map(b => b.id === id ? { ...b, ...patch } : b));
-  }
-
-  function deleteBudget(id) {
-    setBudgets((prev) => prev.filter(b => b.id !== id));
+    setTransactions(prev =>
+      prev.filter(tx => tx.id !== id)
+    );
   }
 
   return (
-    <TransactionContext.Provider value={{
-      transactions,
-      addTransaction,
-      updateTransaction,
-      deleteTransaction,
-      budgets,
-      addBudget,
-      updateBudget,
-      deleteBudget
-    }}>
+    <TransactionContext.Provider
+      value={{
+        transactions,
+        addTransaction,
+        updateTransaction,
+        deleteTransaction,
+
+        // expose budget API
+        budgets,
+        addBudget,
+        updateBudget,
+        deleteBudget
+      }}
+    >
       {children}
     </TransactionContext.Provider>
   );

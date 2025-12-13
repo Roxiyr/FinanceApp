@@ -20,35 +20,17 @@ export default function LoginPage() {
   async function handleSubmit(e) {
     e.preventDefault();
     setLoading(true);
+    setError('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message);
-
-      console.log('Login successful:', data.token);
-
-      // Simpan token di localStorage
-      localStorage.setItem('token', data.token);
-
-      // Redirect ke halaman Dashboard
-      navigate('/dashboard');
+      await login(formData.email, formData.password);
+      navigate('/');
     } catch (err) {
-      console.error('Login error:', err.message);
-      setError(err.message);
+      console.error('Login error:', err);
+      setError(err.message || 'Terjadi kesalahan saat login');
     } finally {
       setLoading(false);
     }
-  }
-
-  function handleLogin() {
-    console.log('Navigating to dashboard...');
-    navigate('/dashboard');
   }
 
   return (
@@ -66,11 +48,7 @@ export default function LoginPage() {
         </div>
 
         <form className="login-form" onSubmit={handleSubmit}>
-          {error && (
-            <div className="alert alert-error">
-              {error}
-            </div>
-          )}
+          {error && <div className="alert alert-error">{error}</div>}
 
           <div className="form-group">
             <label className="form-label">Email</label>
@@ -104,11 +82,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <button 
-            type="submit" 
-            className="btn-login"
-            disabled={loading}
-          >
+          <button type="submit" className="btn-login" disabled={loading}>
             {loading ? 'Loading...' : (
               <>
                 <LogIn width={20} height={20} />
@@ -119,7 +93,7 @@ export default function LoginPage() {
         </form>
 
         <div className="login-footer">
-          <p>Demo: Gunakan email & password apapun untuk masuk</p>
+          <p>Demo: Gunakan email & password apapun untuk masuk (development mode)</p>
         </div>
       </div>
     </div>

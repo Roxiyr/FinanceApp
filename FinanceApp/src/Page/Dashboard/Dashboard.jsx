@@ -1,13 +1,17 @@
-import { useContext, useState } from "react";
+import { useContext, useState, useMemo } from "react";
 import { TransactionContext } from "../../context/TransactionContext";
 import { calcTotals } from "../../logic/transactionsLogic";
 import { formatRp } from "../../logic/format";
+import { attachSpentToBudgets, summarizeBudgets, getBudgetStatus, sortBudgetsByRemaining } from "../../logic/budgetLogic";
 import { TrendingUp, TrendingDown, Target, X, Plus } from 'lucide-react';
 import './Dashboard.css';
 
 const INCOME_CATEGORIES = ['Gaji', 'Freelance', 'Bonus', 'Investasi', 'Lainnya'];
 const EXPENSE_CATEGORIES = ['Makan', 'Transportasi', 'Hiburan', 'Kesehatan', 'Belanja', 'Utilitas', 'Lainnya'];
-const COLORS = ['#3b82f6', '#ec4899', '#a855f7', '#22c55e', '#f59e0b', '#ef4444'];
+
+// Warna untuk Donut Chart
+const CHART_COLORS = ['#3b82f6', '#ec4899', '#a855f7', '#f59e0b', '#06b6d4', '#10b981', '#6b7280']; 
+const CHART_RADIUS = 65; // Radius untuk perhitungan SVG
 
 function Dashboard() {
   const { transactions, addTransaction, budgets } = useContext(TransactionContext);
@@ -28,7 +32,9 @@ function Dashboard() {
     setModalType(type);
     setShowModal(true);
     setIsCustomCategory(false);
-    const categories = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+    const categories = type === 'income'
+      ? INCOME_CATEGORIES
+      : Array.from(new Set([...EXPENSE_CATEGORIES, ...(budgets || []).map(b => b.category || b.name)]) );
     setFormData({ 
       name: '',
       category: categories[0], 
@@ -84,12 +90,14 @@ function Dashboard() {
     }
   }
 
-  const categories = modalType === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+  const categories = modalType === 'income'
+    ? INCOME_CATEGORIES
+    : Array.from(new Set([...EXPENSE_CATEGORIES, ...(budgets || []).map(b => b.category || b.name)]) );
   const placeholderName = modalType === 'income' ? 'Contoh: Gaji Bulanan' : 'Contoh: Belanja Bulanan';
 
   return (
-    <div className="app-container">
-      <main className="main-content">
+    <div className="page-container">
+      <div className="main-content">
         <header className="page-header">
           <div>
             <h1 className="page-title">Dashboard</h1>
@@ -150,9 +158,9 @@ function Dashboard() {
             budgets={budgets}
           />
         )}
-      </main>
+      </div>
 
-      {/* Modal */}
+      {/* Modal ... (kode modal tidak berubah) */}
       {showModal && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -268,66 +276,90 @@ function Dashboard() {
 }
 
 function DashboardContent({ transactions, income, expense, balance, budgets }) {
-  const totalBudgets = (budgets || []).reduce((s, b) => s + (b.amount || 0), 0);
-
-  function getExpenseByCategory() {
-    const categoryTotals = {};
-    transactions
+  const budgetsWithSpent = useMemo(() => {
+    const mappedBudgets = (budgets || []).map((b) => ({ ...b, id: b.id ?? b.category }));
+    const expenseTx = transactions
       .filter((t) => t.type === 'expense')
-      .forEach((t) => {
-        categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
-      });
-    return categoryTotals;
-  }
+      .map((t) => ({ budgetId: t.category, amount: t.amount, type: t.type }));
+    return sortBudgetsByRemaining(attachSpentToBudgets(mappedBudgets, expenseTx));
+  }, [budgets, transactions]);
+
+  const budgetsTotals = useMemo(() => {
+    const summary = summarizeBudgets(budgetsWithSpent);
+    const spent = budgetsWithSpent.reduce((s, b) => s + (b.spent || 0), 0);
+    return { total: summary.total, spent, remaining: summary.total - spent };
+  }, [budgetsWithSpent]);
+
+  // Data Chart: Hanya Pengeluaran, dikelompokkan berdasarkan kategori
+  const donutChartData = useMemo(() => {
+    const expenseTx = transactions.filter(t => t.type === 'expense');
+    const categoryTotals = expenseTx.reduce((acc, tx) => {
+      const category = tx.category || 'Lainnya'; 
+      acc[category] = (acc[category] || 0) + tx.amount;
+      return acc;
+    }, {});
+
+    const sortedData = Object.entries(categoryTotals)
+      .map(([category, amount]) => ({
+        category,
+        amount,
+      }))
+      .sort((a, b) => b.amount - a.amount); // Urutkan dari yang terbesar
+
+    return sortedData;
+  }, [transactions]);
+  
+  const totalChartAmount = donutChartData.reduce((s, d) => s + d.amount, 0);
+
 
   function generateDonutChart() {
-    const categoryTotals = getExpenseByCategory();
-    const entries = Object.entries(categoryTotals);
-    
-    if (entries.length === 0) {
+    if (!donutChartData.length || totalChartAmount === 0) {
+      // Background abu-abu jika tidak ada data
       return (
-        <circle cx="100" cy="100" r="65" fill="none" stroke="#e5e7eb" strokeWidth="30" />
+        <circle cx="100" cy="100" r={CHART_RADIUS} fill="none" stroke="#e5e7eb" strokeWidth="30" />
       );
     }
 
-    const total = entries.reduce((sum, [_, amount]) => sum + amount, 0);
-    const radius = 65;
+    const radius = CHART_RADIUS;
+    const strokeWidth = 30; // Lebar Donut
     const circumference = 2 * Math.PI * radius;
-    
-    let cumulativePercentage = 0;
-    
-    const circles = entries.map(([category, amount], index) => {
-      const percentage = (amount / total) * 100;
-      const strokeDasharray = (percentage / 100) * circumference;
-      const strokeDashoffset = -(cumulativePercentage / 100) * circumference;
+    let cumulativeOffset = 0;
+
+    return donutChartData.map((data, index) => {
+      const amount = data.amount;
+      const percentage = totalChartAmount === 0 ? 0 : (amount / totalChartAmount); // Proporsi (0.0 hingga 1.0)
       
-      cumulativePercentage += percentage;
-      const color = COLORS[index % COLORS.length];
+      const segmentLength = percentage * circumference;
+      // Padding kecil antar segmen (misalnya 2 piksel di circumference)
+      const paddingLength = 4; 
       
-      return (
+      const strokeDasharray = `${Math.max(0, segmentLength - paddingLength)}, ${circumference - segmentLength + paddingLength}`;
+      
+      const color = CHART_COLORS[index % CHART_COLORS.length];
+
+      const segmentElement = (
         <circle
-          key={category}
+          key={data.category} 
           cx="100"
           cy="100"
           r={radius}
           fill="none"
           stroke={color}
-          strokeWidth="30"
+          strokeWidth={strokeWidth}
           strokeDasharray={strokeDasharray}
-          strokeDashoffset={strokeDashoffset}
-          strokeLinecap="round"
+          // Offset diputar 90 derajat ke belakang (-0.25 * circumference) agar dimulai dari atas
+          strokeDashoffset={-cumulativeOffset - (0.25 * circumference)} 
+          strokeLinecap="round" // Membuat ujungnya membulat
           className="chart-segment"
         />
       );
+
+      cumulativeOffset += segmentLength; // Tambahkan panjang segmen saat ini
+      return segmentElement;
     });
-    
-    return circles;
   }
 
-  const recentTransactions = transactions.slice(-6);
-  const expenseByCategory = getExpenseByCategory();
-  const categoryKeys = Object.keys(expenseByCategory);
-  const totalExpense = Object.values(expenseByCategory).reduce((a, b) => a + b, 0);
+  const recentTransactions = transactions.slice(-6).sort((a, b) => new Date(b.date) - new Date(a.date));
 
   return (
     <div className="dashboard-content">
@@ -360,30 +392,45 @@ function DashboardContent({ transactions, income, expense, balance, budgets }) {
           <div className="stat-header">
             <span className="stat-label">Total Anggaran</span>
           </div>
-          <div className="stat-value">{formatRp(totalBudgets)}</div>
+          <div className="stat-value">{formatRp(budgetsTotals.total)}</div>
+          <div className="stat-subtext">Terpakai: {formatRp(budgetsTotals.spent)} • Sisa: {formatRp(budgetsTotals.remaining)}</div>
         </div>
       </div>
 
       <div className="dashboard-grid">
         <div className="card">
-          <h3 className="card-title">Pengeluaran per Kategori</h3>
+          <h3 className="card-title">Distribusi Pengeluaran</h3>
           <div className="chart-placeholder">
-            <svg viewBox="0 0 200 200" width="220" height="220" className="donut-chart">
-              {generateDonutChart()}
+            <svg viewBox="0 0 200 200" width="220" height="220" className="donut-chart" style={{ transform: 'rotate(-90deg)' }}> 
+                {/* Latar belakang abu-abu penuh */}
+                <circle cx="100" cy="100" r={CHART_RADIUS} fill="none" stroke="#f3f4f6" strokeWidth="30" />
+                
+                {/* Segmen Donut */}
+                {generateDonutChart()}
+                
+                {/* Kembalikan rotasi label agar tidak terbalik */}
+                <g style={{ transform: 'rotate(90deg)' }}> 
+                    {/* Tambahkan Teks atau Tooltip di tengah jika diperlukan */}
+                </g>
             </svg>
           </div>
           <div className="chart-stats">
-            <div className="total-expense">Total: <strong>{formatRp(totalExpense)}</strong></div>
+            <div className="total-expense">Total Pengeluaran: <strong>{formatRp(totalChartAmount)}</strong></div>
           </div>
           <div className="chart-legend">
-            {categoryKeys.map((category, idx) => {
-              const amount = expenseByCategory[category];
-              const percentage = ((amount / totalExpense) * 100).toFixed(1);
+            {donutChartData.length === 0 && (
+              <div className="legend-item">
+                <span className="legend-label" style={{ color: '#6b7280' }}>Belum ada pengeluaran yang dicatat</span>
+              </div>
+            )}
+            {donutChartData.map((data, idx) => {
+              const amount = data.amount;
+              const percentage = totalChartAmount === 0 ? 0 : ((amount / totalChartAmount) * 100).toFixed(1);
               return (
-                <div key={category} className="legend-item">
-                  <span className="legend-color" style={{ backgroundColor: COLORS[idx % COLORS.length] }}></span>
+                <div key={data.category} className="legend-item">
+                  <span className="legend-color" style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}></span>
                   <div className="legend-info">
-                    <span className="legend-label">{category}</span>
+                    <span className="legend-label">{data.category}</span> 
                     <span className="legend-percentage">{percentage}%</span>
                   </div>
                   <span className="legend-value">{formatRp(amount)}</span>
@@ -391,6 +438,38 @@ function DashboardContent({ transactions, income, expense, balance, budgets }) {
               );
             })}
           </div>
+        </div>
+
+        <div className="card">
+          <div className="transactions-header">
+            <h3 className="card-title">Status Anggaran</h3>
+            <a href="#" className="link-primary">Kelola Anggaran</a>
+          </div>
+          {budgetsWithSpent.length === 0 ? (
+            <div className="empty-state small">Belum ada anggaran</div>
+          ) : (
+            <div className="budget-status-list">
+              {budgetsWithSpent.slice(0, 4).map((b) => {
+                const status = getBudgetStatus(b.amount || 0, b.spent || 0);
+                const pct = b.amount ? Math.min(100, Math.round((b.spent / b.amount) * 100)) : 0;
+                const badgeClass = status.status === 'over' ? 'badge-over' : status.status === 'warn' ? 'badge-warn' : 'badge-safe';
+                return (
+                  <div key={b.id} className="budget-status-item">
+                    <div>
+                      <div className="budget-status-title">{b.category || b.name}</div>
+                      <div className="budget-status-meta">{formatRp(b.spent)} / {formatRp(b.amount || 0)}</div>
+                    </div>
+                    <div className="budget-status-right">
+                      <span className={`budget-badge ${badgeClass}`}>{status.status === 'over' ? 'Over' : status.status === 'warn' ? 'Hampir' : 'Aman'}</span>
+                      <div className="budget-progress mini">
+                        <div className="budget-progress-fill" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="card">
