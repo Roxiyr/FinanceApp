@@ -3,28 +3,29 @@ import { useBudget } from "./BudgetContext";
 
 export const TransactionContext = createContext();
 
+function loadFromStorage(key, defaultValue) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : defaultValue;
+  } catch {
+    return defaultValue;
+  }
+}
+
 export function TransactionProvider({ children }) {
-  const [transactions, setTransactions] = useState([]);
+  const [transactions, setTransactions] = useState(() =>
+    loadFromStorage('fa_transactions', [])
+  );
 
   // budgets come from BudgetContext
   const { budgets, addBudget, updateBudget, deleteBudget } = useBudget();
-
-  // load transactions from localStorage once
-  useEffect(() => {
-    try {
-      const t = JSON.parse(localStorage.getItem('fa_transactions') || '[]');
-      setTransactions(t);
-    } catch (e) {
-      console.error('TransactionProvider: Failed to parse storage', e);
-    }
-  }, []);
 
   // persist transactions
   useEffect(() => {
     try {
       localStorage.setItem('fa_transactions', JSON.stringify(transactions));
-    } catch (e) {
-      console.error('TransactionProvider: Failed to persist transactions', e);
+    } catch (err) {
+      console.error('Gagal menyimpan transactions:', err);
     }
   }, [transactions]);
 
