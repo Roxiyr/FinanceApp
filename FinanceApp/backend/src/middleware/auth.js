@@ -10,7 +10,7 @@ function authenticateToken(req, res, next) {
 
   const jwtSecret = process.env.JWT_SECRET;
   if (!jwtSecret) {
-    console.error('⚠️ [WARNING] JWT_SECRET tidak ditemukan di environment variables');
+    console.error(' [WARNING] JWT_SECRET tidak ditemukan di environment variables');
     return res.status(500).json({ error: 'Konfigurasi server tidak valid' });
   }
 

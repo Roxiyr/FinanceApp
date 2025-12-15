@@ -304,7 +304,7 @@ function DashboardContent({ transactions, income, expense, balance, budgets }) {
         category,
         amount,
       }))
-      .sort((a, b) => b.amount - a.amount); // Urutkan dari yang terbesar
+      .sort((a, b) => b.amount - a.amount); // Mengurutkan dari yang terbesar
 
     return sortedData;
   }, [transactions]);

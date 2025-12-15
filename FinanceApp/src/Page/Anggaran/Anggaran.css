@@ -225,9 +225,7 @@
     grid-template-columns: 1fr; /* Default satu kolom */
     gap: 15px; 
 }
-.budget-form .form-group {
-    /* Container untuk label dan input */
-}
+
 .budget-form .full { 
     grid-column: 1 / -1; 
 }
@@ -327,3 +325,4 @@
         overflow: auto;
     }
  }
+ 

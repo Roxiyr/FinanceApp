@@ -4,10 +4,10 @@ const app = require('./src/app');
 const port = process.env.PORT || 4001;
 
 app.listen(port, () => {
-  console.log('\n🚀 [SERVER] Backend berjalan di http://localhost:' + port);
-  console.log('📊 [SERVER] Environment: ' + (process.env.NODE_ENV || 'development'));
-  console.log('💾 [DATABASE] Host: ' + (process.env.DB_HOST || 'localhost'));
-  console.log('📡 [API] Health check: GET http://localhost:' + port + '/api/health');
+  console.log('\n[SERVER] Backend berjalan di http://localhost:' + port);
+  console.log('[SERVER] Environment: ' + (process.env.NODE_ENV || 'development'));
+  console.log('[DATABASE] Host: ' + (process.env.DB_HOST || 'localhost'));
+  console.log('[API] Health check: GET http://localhost:' + port + '/api/health');
   console.log('');
 
   // #region agent log

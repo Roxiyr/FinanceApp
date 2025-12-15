@@ -11,11 +11,7 @@ export default function Pendapatan() {
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState(null);
   const [isCustomCategory, setIsCustomCategory] = useState(false);
-  // PERBAIKAN: state 'form' dihapus karena tidak dipakai
-  // const [form, setForm] = useState({ name:'', category:'Gaji', amount:'', date:'', notes:'' });
-  // PERBAIKAN: state 'loading' dihapus karena tidak dipakai
-  // const [loading, setLoading] = useState(false);
-  
+
   const incomeTransactions = transactions.filter(t => t.type === 'income');
   const totalIncome = incomeTransactions.reduce((sum, t) => sum + t.amount, 0);
 
@@ -55,29 +51,6 @@ export default function Pendapatan() {
       setEditData(prev => ({ ...prev, category: value }));
     }
   }
-
-  // PERBAIKAN: Fungsi handleSubmit dihapus karena tidak dipanggil
-  /*   async function handleSubmit(e) {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      await addTransaction({
-        type: 'income',
-        name: form.name,
-        category: form.category,
-        amount: Number(form.amount),
-        date: form.date || new Date().toISOString(),
-        notes: form.notes || ''
-      });
-      setForm({ name:'', category:'Gaji', amount:'', date:'', notes:'' });
-    } catch (err) {
-      console.error('Failed add income', err);
-      alert(err.message || 'Gagal menambahkan pendapatan');
-    } finally {
-      setLoading(false);
-    }
-  }
-  */
 
   return (
     <div className="page-container">
