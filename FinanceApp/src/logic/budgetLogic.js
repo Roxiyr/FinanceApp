@@ -1,5 +1,3 @@
-// Utility helpers untuk logika anggaran
-// Semua fungsi pure (tidak mengubah input) agar mudah di-test dan dipakai ulang.
 
 /**
  * Hitung total anggaran dan jumlah item.

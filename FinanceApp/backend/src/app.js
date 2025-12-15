@@ -36,7 +36,7 @@ app.use('/api', routes);
 
 // Error handling
 app.use((err, req, res, next) => {
-  console.error('❌ [ERROR]', err.message);
+  console.error(' [ERROR]', err.message);
   res.status(err.status || 500).json({ error: err.message });
 });
 

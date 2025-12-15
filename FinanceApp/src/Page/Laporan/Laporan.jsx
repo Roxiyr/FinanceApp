@@ -32,7 +32,6 @@ export default function Laporan() {
   const expenseByCategory = getExpenseByCategory();
   const totalExpense = Object.values(expenseByCategory).reduce((a, b) => a + b, 0);
 
-  // Variabel 'net' tidak digunakan karena 'balance' sudah tersedia dari calcTotals
   // const totalIncome = transactions.reduce((s,t)=> t.type==='income' ? s + Number(t.amount) : s, 0);
   // const net = totalIncome - totalExpense;
 
